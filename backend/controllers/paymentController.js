@@ -2,13 +2,13 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const paypal = require('paypal-rest-sdk');
 const Enrollment = require('../models/Enrollment'); // CHỈ KHAI BÁO 1 LẦN
 const Course = require('../models/Course');
-const Payment = require('../models/Payment'); // THÊM DÒNG NÀY
+const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { generateInvoice, sendInvoiceEmail } = require('../utils/invoiceService');
 
 // Configure PayPal SDK
 paypal.configure({
-  mode: process.env.PAYPAL_MODE || 'sandbox', // sandbox or live
+  mode: process.env.PAYPAL_MODE || 'sandbox',
   client_id: process.env.PAYPAL_CLIENT_ID,
   client_secret: process.env.PAYPAL_CLIENT_SECRET
 });
@@ -533,5 +533,5 @@ module.exports = {
   executePayPalPayment,
   handleWebhook,
   getInvoiceUrl,
-  downloadInvoice
+  downloadInvoice,
 };

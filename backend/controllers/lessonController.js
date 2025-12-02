@@ -2,12 +2,19 @@ const Lesson = require('../models/Lesson');
 const Course = require('../models/Course');
 
 // @desc    Create a new lesson
-// @route   POST /v2/lessons/courses/:courseId/lessons
+// @route   POST /v2/lessons/courses/:courseId/lessons or POST /v2/lessons
 // @access  Private (Instructor)
 const createLesson = async (req, res, next) => {
   try {
-    const { courseId } = req.params;
+    const courseId = req.params.courseId || req.body.courseId;
     
+    if (!courseId) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Course ID is required'
+      });
+    }
+
     // Check if course exists and user owns it
     const course = await Course.findOne({ _id: courseId, instructorId: req.user.id });
     if (!course) {
@@ -23,7 +30,11 @@ const createLesson = async (req, res, next) => {
     };
 
     const lesson = await Lesson.create(lessonData);
-    res.status(201).json(lesson);
+    res.status(201).json({
+      statusCode: 201,
+      message: 'Lesson created successfully',
+      data: lesson
+    });
   } catch (error) {
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
@@ -92,7 +103,11 @@ const updateLesson = async (req, res, next) => {
       { new: true, runValidators: true }
     );
 
-    res.json(updatedLesson);
+    res.json({
+      statusCode: 200,
+      message: 'Lesson updated successfully',
+      data: updatedLesson
+    });
   } catch (error) {
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
@@ -109,5 +124,5 @@ const updateLesson = async (req, res, next) => {
 module.exports = {
   createLesson,
   getLessonsByCourse,
-  updateLesson // THÊM HÀM NÀY VÀO EXPORTS
+  updateLesson
 };

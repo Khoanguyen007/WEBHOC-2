@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, ArrowRight, RefreshCw, Home, Loader, Download } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, RefreshCw, Home, Loader, Download, QrCode } from 'lucide-react';
 import { paymentAPI } from '../services/api';
 
 const PaymentResult = () => {
@@ -10,12 +10,25 @@ const PaymentResult = () => {
   const [error, setError] = useState('');
   const [invoiceUrl, setInvoiceUrl] = useState(null);
   const [enrollmentId, setEnrollmentId] = useState(null);
-  const [paymentIdForInvoice, setPaymentIdForInvoice] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('');
   
   const status = searchParams.get('status');
   const sessionId = searchParams.get('session_id');
   const paymentId = searchParams.get('paypalPaymentId');
   const payerId = searchParams.get('PayerID');
+  const type = searchParams.get('type'); // 'qr', 'stripe', 'paypal'
+  const qrPaymentId = searchParams.get('paymentId');
+
+  // Determine payment method
+  useEffect(() => {
+    if (type === 'qr') {
+      setPaymentMethod('qr');
+    } else if (sessionId) {
+      setPaymentMethod('stripe');
+    } else if (paymentId) {
+      setPaymentMethod('paypal');
+    }
+  }, [type, sessionId, paymentId]);
 
   // Handle PayPal payment execution
   useEffect(() => {
@@ -25,15 +38,14 @@ const PaymentResult = () => {
         try {
           const response = await paymentAPI.executePayPalPayment(paymentId, payerId);
           setEnrollmentId(response.data?.enrollmentId);
-          setPaymentIdForInvoice(paymentId);
           
-          // Wait a bit for invoice to be generated, then fetch it
+          // Fetch invoice
           setTimeout(async () => {
             try {
               const invoiceResponse = await paymentAPI.getInvoiceUrl(paymentId);
               setInvoiceUrl(invoiceResponse.data?.downloadUrl);
             } catch (err) {
-              console.log('Invoice not yet available (will retry on page)');
+              console.log('Invoice not yet available');
             }
           }, 1000);
         } catch (err) {
@@ -48,6 +60,37 @@ const PaymentResult = () => {
     executePayPal();
   }, [paymentId, payerId, status]);
 
+  // Handle QR payment result
+  useEffect(() => {
+    if (status === 'success' && type === 'qr' && qrPaymentId) {
+      // QR payment already verified in modal, just fetch details
+      fetchQRPaymentDetails();
+    }
+  }, [status, type, qrPaymentId]);
+
+  const fetchQRPaymentDetails = async () => {
+    if (!qrPaymentId) return;
+    
+    try {
+      const response = await paymentAPI.getPaymentDetails(qrPaymentId);
+      const payment = response.data.payment;
+      
+      if (payment.status === 'completed') {
+        // Try to get invoice
+        setTimeout(async () => {
+          try {
+            const invoiceResponse = await paymentAPI.getInvoiceUrl(qrPaymentId);
+            setInvoiceUrl(invoiceResponse.data?.downloadUrl);
+          } catch (err) {
+            console.log('Invoice not yet available');
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      console.error('Failed to fetch QR payment details:', err);
+    }
+  };
+
   useEffect(() => {
     if (!status) {
       navigate('/');
@@ -59,23 +102,44 @@ const PaymentResult = () => {
     const fetchInvoice = async () => {
       if (status === 'success' && sessionId && !invoiceUrl) {
         try {
-          // For Stripe payments, sessionId is used as paymentId in some cases
-          // Try to get invoice using session ID
           const response = await paymentAPI.getInvoiceUrl(sessionId);
           setInvoiceUrl(response.data?.downloadUrl);
         } catch (err) {
-          console.log('Invoice not yet available (will be emailed to you)');
+          console.log('Invoice not yet available');
         }
       }
     };
     
-    // Small delay to allow invoice generation
     const timer = setTimeout(() => {
       fetchInvoice();
     }, 2000);
     
     return () => clearTimeout(timer);
   }, [status, sessionId, invoiceUrl]);
+
+  const getPaymentMethodIcon = () => {
+    switch (paymentMethod) {
+      case 'qr':
+        return <QrCode className="h-12 w-12 text-green-600" />;
+      case 'paypal':
+        return <div className="text-2xl font-bold text-blue-600">PayPal</div>;
+      default:
+        return <CheckCircle className="h-12 w-12 text-green-600" />;
+    }
+  };
+
+  const getPaymentMethodText = () => {
+    switch (paymentMethod) {
+      case 'qr':
+        return 'Chuyển khoản QR Code';
+      case 'stripe':
+        return 'Thẻ tín dụng';
+      case 'paypal':
+        return 'PayPal';
+      default:
+        return 'thanh toán';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -92,19 +156,23 @@ const PaymentResult = () => {
           ) : status === 'success' && !error ? (
             <>
               <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-green-100 mb-6 shadow-lg">
-                <CheckCircle className="h-12 w-12 text-green-600" />
+                {getPaymentMethodIcon()}
               </div>
               
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Thanh toán thành công!</h2>
-              <p className="text-gray-600 mb-2 font-medium text-lg">Chúc mừng bạn!</p>
+              <p className="text-gray-600 mb-2 font-medium text-lg">
+                Phương thức: {getPaymentMethodText()}
+              </p>
               <p className="text-gray-500 mb-8">
                 Bạn đã đăng ký khóa học thành công. Bây giờ hãy bắt đầu hành trình học tập của bạn!
               </p>
               
-              {(sessionId || paymentId) && (
+              {(sessionId || paymentId || qrPaymentId) && (
                 <div className="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-xs text-gray-600">ID Giao dịch:</p>
-                  <p className="text-sm font-mono text-gray-700 break-all">{sessionId || paymentId}</p>
+                  <p className="text-sm font-mono text-gray-700 break-all">
+                    {qrPaymentId || sessionId || paymentId}
+                  </p>
                 </div>
               )}
 
@@ -147,6 +215,7 @@ const PaymentResult = () => {
                 <p>✓ Truy cập khóa học ngay lập tức</p>
                 <p>✓ Hoá đơn đã được gửi tới email của bạn</p>
                 <p>✓ Hỗ trợ trọn đời</p>
+                {paymentMethod === 'qr' && <p>✓ Xác nhận tự động trong 3-5 phút</p>}
               </div>
             </>
           ) : (

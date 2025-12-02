@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
-import { lessonAPI, progressAPI } from '../services/api';
+import { CheckCircle, ChevronRight, ChevronLeft, FileText, BookMarked } from 'lucide-react';
+import { lessonAPI, progressAPI, quizAPI } from '../services/api';
 import VideoPlayer from '../components/VideoPlayer';
 
 const LessonDetail = () => {
@@ -14,6 +14,8 @@ const LessonDetail = () => {
   const [completing, setCompleting] = useState(false);
   const [progress, setProgress] = useState(null);
   const [savingProgress, setSavingProgress] = useState(false);
+  const [quizzes, setQuizzes] = useState([]);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,6 +37,14 @@ const LessonDetail = () => {
             setProgress(lessonProgress);
           } catch (err) {
             console.log('Progress not available yet');
+          }
+
+          // Fetch quizzes for this course
+          try {
+            const quizzesResponse = await quizAPI.getQuizzes(courseId);
+            setQuizzes(quizzesResponse.data.data || []);
+          } catch (err) {
+            console.log('No quizzes available');
           }
         } else if (listResponse.data.data.length > 0) {
           navigate(`/courses/${courseId}/lessons/${listResponse.data.data[0]._id}`, { replace: true });
@@ -116,6 +126,32 @@ const LessonDetail = () => {
             {currentLesson.content}
           </div>
           
+          {/* Quiz Section - Show after lesson completion */}
+          {progress?.completed && quizzes.length > 0 && (
+            <div className="mb-8 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <h2 className="text-lg font-bold text-blue-900 mb-3 flex items-center">
+                <BookMarked className="w-5 h-5 mr-2" />
+                Bài kiểm tra
+              </h2>
+              <p className="text-blue-700 mb-4">Hoàn thành bài học rồi! Hãy làm bài kiểm tra để kiểm tra kiến thức của bạn.</p>
+              <div className="space-y-2">
+                {quizzes.map((quiz) => (
+                  <button
+                    key={quiz._id}
+                    onClick={() => navigate(`/courses/${courseId}/quiz/${quiz._id}`)}
+                    className="w-full bg-white text-left p-4 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{quiz.title}</h3>
+                      <p className="text-sm text-gray-600">{quiz.description}</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-blue-600" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center border-t pt-6">
             <button 
               onClick={() => navigate(`/courses/${courseId}`)}
@@ -124,18 +160,25 @@ const LessonDetail = () => {
               <ChevronLeft size={20} /> Về trang khóa học
             </button>
             
-            <button
-              onClick={handleComplete}
-              disabled={completing}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2 transition-all disabled:opacity-50"
-            >
-              {completing ? <span>Đang lưu...</span> : (
-                <>
-                  <span>Hoàn thành & Tiếp tục</span>
-                  <ChevronRight size={20} />
-                </>
-              )}
-            </button>
+            {!progress?.completed ? (
+              <button
+                onClick={handleComplete}
+                disabled={completing}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2 transition-all disabled:opacity-50"
+              >
+                {completing ? <span>Đang lưu...</span> : (
+                  <>
+                    <span>Hoàn thành & Tiếp tục</span>
+                    <ChevronRight size={20} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="flex items-center text-green-600 font-semibold">
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Đã hoàn thành
+              </div>
+            )}
           </div>
         </div>
       </div>

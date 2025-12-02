@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard, Lock, CheckCircle, AlertCircle, BookOpen, ArrowLeft } from 'lucide-react';
+import { CreditCard, Lock, CheckCircle, AlertCircle, BookOpen, ArrowLeft, QrCode, Banknote } from 'lucide-react';
 import { courseAPI, paymentAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import QRPaymentModal from '../components/QRPaymentModal';
 
 const Checkout = () => {
   const { courseId } = useParams();
@@ -15,14 +16,21 @@ const Checkout = () => {
   const [error, setError] = useState('');
   const [discountCode, setDiscountCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('stripe'); // 'stripe' or 'paypal'
+  const [paymentMethod, setPaymentMethod] = useState('qr'); // Default to QR
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [coursePaymentInfo, setCoursePaymentInfo] = useState(null);
 
-  // Fetch course details
+  // Fetch course details and payment info
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchData = async () => {
       try {
-        const response = await courseAPI.getCourse(courseId);
-        setCourse(response.data);
+        // Fetch course details
+        const courseResponse = await courseAPI.getCourse(courseId);
+        setCourse(courseResponse.data);
+        
+        // Fetch payment info (banks, instructions)
+        const paymentInfoResponse = await paymentAPI.getCoursePaymentInfo(courseId);
+        setCoursePaymentInfo(paymentInfoResponse.data);
       } catch (err) {
         setError('Không thể tải thông tin khóa học.');
         setTimeout(() => navigate('/courses'), 3000);
@@ -30,38 +38,35 @@ const Checkout = () => {
         setLoading(false);
       }
     };
-    fetchCourse();
+    fetchData();
   }, [courseId, navigate]);
 
-  // Handle payment processing
+  // Handle QR payment button click
+  const handleQRPayment = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setShowQRModal(true);
+  };
+
+  // Handle other payment methods
   const handlePayment = async () => {
     if (!user) {
       navigate('/login');
       return;
     }
 
+    if (paymentMethod === 'qr') {
+      handleQRPayment();
+      return;
+    }
+
     setProcessing(true);
     setError('');
     try {
-      if (paymentMethod === 'stripe') {
-        const response = await paymentAPI.createCheckoutSession(courseId);
-        const { checkoutUrl } = response.data;
-        
-        if (checkoutUrl) {
-          window.location.href = checkoutUrl;
-        } else {
-          navigate('/payment-result?status=success');
-        }
-      } else if (paymentMethod === 'paypal') {
-        const response = await paymentAPI.createPayPalCheckout(courseId);
-        const { approvalUrl } = response.data;
-        
-        if (approvalUrl) {
-          window.location.href = approvalUrl;
-        } else {
-          navigate('/payment-result?status=success');
-        }
-      }
+      // Stripe or PayPal payment
+      // ... existing code ...
     } catch (err) {
       console.error('Payment error:', err);
       const message = err.response?.data?.message || 'Lỗi khởi tạo thanh toán. Vui lòng thử lại.';
@@ -156,8 +161,8 @@ const Checkout = () => {
                 <div>
                   <h3 className="font-semibold text-blue-900 mb-1">Thanh toán an toàn</h3>
                   <p className="text-sm text-blue-800">
-                    Giao dịch được bảo vệ bằng mã hóa SSL 256-bit. Chúng tôi sử dụng Stripe để xử lý thanh toán an toàn. 
-                    Thông tin thẻ không được lưu trữ trên máy chủ của chúng tôi.
+                    Thanh toán qua QR Code được bảo mật bởi VietQR và các ngân hàng liên kết. 
+                    Hệ thống tự động xác nhận sau 3-5 phút khi chuyển khoản thành công.
                   </p>
                 </div>
               </div>
@@ -194,38 +199,83 @@ const Checkout = () => {
             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Chọn phương thức thanh toán</h2>
               <div className="space-y-3">
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all" style={{borderColor: paymentMethod === 'stripe' ? '#3b82f6' : '#e5e7eb', backgroundColor: paymentMethod === 'stripe' ? '#eff6ff' : 'white'}}>
+                {/* QR Payment Option */}
+                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all" style={{borderColor: paymentMethod === 'qr' ? '#3b82f6' : '#e5e7eb', backgroundColor: paymentMethod === 'qr' ? '#eff6ff' : 'white'}}>
                   <input
                     type="radio"
                     name="payment"
-                    value="stripe"
-                    checked={paymentMethod === 'stripe'}
+                    value="qr"
+                    checked={paymentMethod === 'qr'}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     className="w-4 h-4 text-primary-600"
                   />
                   <span className="ml-3 flex-1">
-                    <span className="block font-medium text-gray-900">Thẻ tín dụng / Debit (Stripe)</span>
-                    <span className="block text-sm text-gray-500">Visa, Mastercard, American Express</span>
+                    <span className="block font-medium text-gray-900">Chuyển khoản ngân hàng (QR Code)</span>
+                    <span className="block text-sm text-gray-500">Quét mã QR để thanh toán nhanh chóng</span>
+                    <span className="block text-xs text-gray-400 mt-1">
+                      Hỗ trợ: {coursePaymentInfo?.paymentMethods?.[0]?.banks?.join(', ') || 'MB, VCB, ACB, BIDV'}
+                    </span>
                   </span>
-                  <CreditCard className="w-5 h-5 text-gray-400" />
+                  <div className="flex items-center">
+                    <QrCode className="w-6 h-6 text-gray-400" />
+                    <Banknote className="w-5 h-5 ml-1 text-gray-400" />
+                  </div>
                 </label>
-                
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all" style={{borderColor: paymentMethod === 'paypal' ? '#3b82f6' : '#e5e7eb', backgroundColor: paymentMethod === 'paypal' ? '#eff6ff' : 'white'}}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="paypal"
-                    checked={paymentMethod === 'paypal'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-4 h-4 text-primary-600"
-                  />
-                  <span className="ml-3 flex-1">
-                    <span className="block font-medium text-gray-900">PayPal</span>
-                    <span className="block text-sm text-gray-500">Thanh toán an toàn với tài khoản PayPal của bạn</span>
-                  </span>
-                  <div className="text-xs font-bold text-blue-600">PayPal</div>
-                </label>
+
+                {/* Other payment methods (optional) */}
+                {false && ( // Set to false to hide other payment methods
+                  <>
+                    <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all" style={{borderColor: paymentMethod === 'stripe' ? '#3b82f6' : '#e5e7eb', backgroundColor: paymentMethod === 'stripe' ? '#eff6ff' : 'white'}}>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="stripe"
+                        checked={paymentMethod === 'stripe'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-4 h-4 text-primary-600"
+                      />
+                      <span className="ml-3 flex-1">
+                        <span className="block font-medium text-gray-900">Thẻ tín dụng / Debit (Stripe)</span>
+                        <span className="block text-sm text-gray-500">Visa, Mastercard, American Express</span>
+                      </span>
+                      <CreditCard className="w-5 h-5 text-gray-400" />
+                    </label>
+                    
+                    <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all" style={{borderColor: paymentMethod === 'paypal' ? '#3b82f6' : '#e5e7eb', backgroundColor: paymentMethod === 'paypal' ? '#eff6ff' : 'white'}}>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="paypal"
+                        checked={paymentMethod === 'paypal'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-4 h-4 text-primary-600"
+                      />
+                      <span className="ml-3 flex-1">
+                        <span className="block font-medium text-gray-900">PayPal</span>
+                        <span className="block text-sm text-gray-500">Thanh toán an toàn với tài khoản PayPal của bạn</span>
+                      </span>
+                      <div className="text-xs font-bold text-blue-600">PayPal</div>
+                    </label>
+                  </>
+                )}
               </div>
+
+              {/* QR Payment Instructions */}
+              {paymentMethod === 'qr' && coursePaymentInfo?.instructions?.qr && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Hướng dẫn thanh toán QR:</h4>
+                  <ul className="space-y-1 text-sm text-gray-600">
+                    {coursePaymentInfo.instructions.qr.map((instruction, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="w-5 h-5 bg-primary-100 text-primary-800 rounded-full flex items-center justify-center text-xs mr-2 mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        {instruction}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
@@ -237,17 +287,21 @@ const Checkout = () => {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-gray-600">
                   <span>Giá gốc</span>
-                  <span className={discountApplied ? 'line-through' : ''}>${(course.priceCents / 100).toFixed(2)}</span>
+                  <span className={discountApplied ? 'line-through' : ''}>
+                    {(course.priceCents / 100).toLocaleString('vi-VN')} VND
+                  </span>
                 </div>
                 {discountApplied && (
                   <div className="flex justify-between text-green-600 font-medium">
                     <span>Giảm giá (20%)</span>
-                    <span>-${((course.priceCents / 100) * 0.2).toFixed(2)}</span>
+                    <span>-{((course.priceCents / 100) * 0.2).toLocaleString('vi-VN')} VND</span>
                   </div>
                 )}
                 <div className="border-t pt-4 flex justify-between items-center">
                   <span className="font-bold text-gray-900">Tổng thanh toán</span>
-                  <span className="text-3xl font-bold text-primary-600">${finalPrice}</span>
+                  <span className="text-3xl font-bold text-primary-600">
+                    {finalPrice.toLocaleString('vi-VN')} VND
+                  </span>
                 </div>
               </div>
 
@@ -270,11 +324,40 @@ const Checkout = () => {
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-5 h-5 mr-2" />
-                    {paymentMethod === 'stripe' ? 'Thanh toán qua Stripe' : 'Thanh toán qua PayPal'}
+                    {paymentMethod === 'qr' && (
+                      <>
+                        <QrCode className="w-5 h-5 mr-2" />
+                        Quét mã QR để thanh toán
+                      </>
+                    )}
+                    {paymentMethod === 'stripe' && (
+                      <>
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Thanh toán qua Stripe
+                      </>
+                    )}
+                    {paymentMethod === 'paypal' && (
+                      <>
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Thanh toán qua PayPal
+                      </>
+                    )}
                   </>
                 )}
               </button>
+
+              {/* QR Payment Modal */}
+              {showQRModal && (
+                <QRPaymentModal
+                  courseId={courseId}
+                  courseTitle={course.title}
+                  amount={parseFloat(finalPrice)}
+                  onClose={() => setShowQRModal(false)}
+                  onPaymentSuccess={() => {
+                    navigate('/payment-result?status=success&type=qr');
+                  }}
+                />
+              )}
 
               <div className="mt-6 pt-6 border-t space-y-3 text-xs text-gray-600">
                 <div className="flex items-start gap-2">
@@ -288,6 +371,10 @@ const Checkout = () => {
                 <div className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                   <span>Hỗ trợ trọn đời</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <span>Xác nhận tự động trong 3-5 phút</span>
                 </div>
               </div>
             </div>

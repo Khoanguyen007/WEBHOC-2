@@ -4,7 +4,7 @@ const paymentSchema = new mongoose.Schema({
   enrollmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Enrollment',
-    required: true
+    default: null
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -23,7 +23,7 @@ const paymentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded'],
+    enum: ['pending', 'completed', 'failed', 'refunded', 'expired'],
     required: true
   },
   transactionId: {
@@ -41,6 +41,31 @@ const paymentSchema = new mongoose.Schema({
   },
   gatewayResponse: {
     type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  // Bank transfer fields
+  bankCode: {
+    type: String,
+    default: null
+  },
+  bankAccountNumber: {
+    type: String,
+    default: null
+  },
+  bankAccountName: {
+    type: String,
+    default: null
+  },
+  bankName: {
+    type: String,
+    default: null
+  },
+  expiresAt: {
+    type: Date,
+    default: null
+  },
+  completedAt: {
+    type: Date,
     default: null
   }
 }, {

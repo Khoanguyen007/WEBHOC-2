@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, User, BookOpen, Star } from 'lucide-react';
+import { Clock, User, BookOpen, Star, Tag } from 'lucide-react';
 
 const CourseCard = ({ course, viewMode = 'grid' }) => {
   const difficultyColors = {
@@ -17,58 +17,105 @@ const CourseCard = ({ course, viewMode = 'grid' }) => {
     }).format(priceCents / 100);
   };
 
+  const formatRating = (rating) => {
+    if (!rating || !rating.average) return null;
+    return `${rating.average.toFixed(1)} (${rating.count || 0})`;
+  };
+
+  const getInitials = (name) => {
+    if (!name) return 'I';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const isFree = !course.priceCents || course.priceCents === 0;
+
   if (viewMode === 'list') {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all duration-300 group">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="relative md:w-64 h-40 flex-shrink-0 overflow-hidden rounded-lg">
-             <img 
-              src={course.coverImageUrl || 'https://via.placeholder.com/300x200'} 
+        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+          <div className="relative md:w-56 lg:w-64 h-40 flex-shrink-0 overflow-hidden rounded-lg">
+            <img 
+              src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'} 
               alt={course.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
             />
-            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-primary-700 shadow-sm">
+            <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold shadow-sm ${
+              isFree 
+                ? 'bg-emerald-500 text-white' 
+                : 'bg-white/90 backdrop-blur-sm text-primary-700'
+            }`}>
               {formatPrice(course.priceCents)}
             </div>
+            {course.category && (
+              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                {course.category}
+              </div>
+            )}
           </div>
           
           <div className="flex-1">
-            <div className="flex justify-between items-start">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${difficultyColors[course.difficultyLevel] || 'bg-gray-100 text-gray-800'}`}>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                difficultyColors[course.difficultyLevel] || 'bg-gray-100 text-gray-800'
+              }`}>
                 {course.difficultyLevel}
               </span>
+              {course.isNew && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                  Mới
+                </span>
+              )}
+              {course.isPopular && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                  Phổ biến
+                </span>
+              )}
             </div>
 
             <Link to={`/courses/${course._id}`}>
-              <h3 className="text-xl font-bold text-gray-900 mt-2 mb-2 group-hover:text-primary-600 transition-colors">
+              <h3 className="text-xl font-bold text-gray-900 mt-2 mb-2 group-hover:text-primary-600 transition-colors line-clamp-1">
                 {course.title}
               </h3>
             </Link>
             
             <p className="text-gray-600 mb-4 line-clamp-2 text-sm">
-              {course.description}
+              {course.shortDescription || course.description}
             </p>
             
-            <div className="flex items-center gap-6 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm text-gray-500 mb-4">
               <div className="flex items-center gap-1.5">
                 <User className="h-4 w-4" />
-                <span>{course.instructorId?.displayName || 'Giảng viên'}</span>
+                <span className="truncate max-w-[120px]">
+                  {course.instructorId?.displayName || course.instructorName || 'Giảng viên'}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>{course.duration ? `${Math.round(course.duration / 60)} giờ` : 'Tiến độ tự do'}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-yellow-500">
-                <Star className="h-4 w-4 fill-current" />
-                <span className="text-gray-600">4.8 (120)</span>
+              <div className="flex items-center gap-1.5">
+                <BookOpen className="h-4 w-4" />
+                <span>{course.lessonCount || course.modules?.length || 0} bài học</span>
               </div>
+              {course.rating && course.rating.average > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                  <span className="text-gray-600">{formatRating(course.rating)}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="md:self-center">
-             <Link
+          <div className="md:self-center flex-shrink-0">
+            <Link
               to={`/courses/${course._id}`}
-              className="inline-flex items-center justify-center w-full md:w-auto bg-primary-50 text-primary-700 hover:bg-primary-600 hover:text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-300"
+              className="inline-flex items-center justify-center w-full md:w-auto bg-primary-50 text-primary-700 hover:bg-primary-600 hover:text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-300 shadow-sm hover:shadow"
             >
               Chi tiết
             </Link>
@@ -83,51 +130,93 @@ const CourseCard = ({ course, viewMode = 'grid' }) => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full">
       <div className="relative h-48 overflow-hidden">
         <img 
-          src={course.coverImageUrl || 'https://via.placeholder.com/300x200'} 
+          src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'} 
           alt={course.title} 
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          loading="lazy"
         />
-        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur px-3 py-1 rounded-md text-sm font-bold text-primary-700 shadow-sm">
+        <div className={`absolute top-3 right-3 px-3 py-1 rounded-md text-sm font-bold shadow-sm ${
+          isFree 
+            ? 'bg-emerald-500 text-white' 
+            : 'bg-white/95 backdrop-blur text-primary-700'
+        }`}>
           {formatPrice(course.priceCents)}
         </div>
-        <div className="absolute top-3 left-3">
-           <span className={`px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border ${difficultyColors[course.difficultyLevel] || 'bg-gray-100'}`}>
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border ${
+            difficultyColors[course.difficultyLevel] || 'bg-gray-100'
+          }`}>
             {course.difficultyLevel}
           </span>
+          {course.category && (
+            <span className="px-2 py-1 rounded-md text-xs font-medium bg-black/70 text-white backdrop-blur-sm">
+              {course.category}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="p-5 flex-1 flex flex-col">
-        <Link to={`/courses/${course._id}`}>
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
-            {course.title}
-          </h3>
-        </Link>
+        <div className="mb-2">
+          {course.isNew && (
+            <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mb-2">
+              Mới
+            </span>
+          )}
+          <Link to={`/courses/${course._id}`}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+              {course.title}
+            </h3>
+          </Link>
+        </div>
         
         <p className="text-gray-600 mb-4 line-clamp-2 text-sm flex-1">
-          {course.description}
+          {course.shortDescription || course.description}
         </p>
 
         <div className="border-t border-gray-100 pt-4 mt-auto space-y-3">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-             <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
-                  {course.instructorId?.displayName?.[0] || 'I'}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">
+                {getInitials(course.instructorId?.displayName || course.instructorName)}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500">Giảng viên</span>
+                <span className="text-sm font-medium truncate max-w-[100px]">
+                  {course.instructorId?.displayName || course.instructorName || 'Giảng viên'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {course.rating && course.rating.average > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                  <span className="text-sm font-medium">{course.rating.average.toFixed(1)}</span>
                 </div>
-                <span className="truncate max-w-[100px]">{course.instructorId?.displayName || 'Giảng viên'}</span>
-             </div>
-             <div className="flex items-center gap-1">
-                <BookOpen className="h-3.5 w-3.5" />
-                <span>12 bài</span>
-             </div>
+              )}
+              <div className="flex items-center gap-1 text-gray-500">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm">{course.lessonCount || 0}</span>
+              </div>
+            </div>
           </div>
 
-          <Link
-            to={`/courses/${course._id}`}
-            className="block w-full text-center bg-white border border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white py-2 rounded-lg font-medium transition-all duration-300"
-          >
-            Xem chi tiết
-          </Link>
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              {course.duration ? `${Math.round(course.duration / 60)} giờ` : 'Tiến độ tự do'}
+            </div>
+            <Link
+              to={`/courses/${course._id}`}
+              className={`inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-300 shadow-sm hover:shadow ${
+                isFree
+                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white'
+                  : 'bg-primary-50 text-primary-700 hover:bg-primary-600 hover:text-white'
+              }`}
+            >
+              {isFree ? 'Học ngay' : 'Xem chi tiết'}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

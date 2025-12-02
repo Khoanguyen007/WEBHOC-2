@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, User, LogOut, Menu, X, LayoutDashboard } from 'lucide-react';
+import { BookOpen, User, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Header = () => {
@@ -29,13 +29,26 @@ const Header = () => {
             <Link to="/" className="text-gray-600 hover:text-primary-600 font-medium transition-colors">
               Trang chủ
             </Link>
-            <Link to="/courses" className="text-gray-600 hover:text-primary-600 font-medium transition-colors">
-              Khóa học
-            </Link>
+            {user?.role === 'student' ? (
+              <>
+                <Link to="/courses" className="text-gray-600 hover:text-primary-600 font-medium transition-colors">
+                  Khóa học
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/instructor/dashboard" className="text-gray-600 hover:text-primary-600 font-medium transition-colors">
+                  Dashboard
+                </Link>
+                <Link to="/instructor/courses" className="text-gray-600 hover:text-primary-600 font-medium transition-colors">
+                  Khóa học của tôi
+                </Link>
+              </>
+            )}
             {user && (
-              <Link to="/dashboard" className="text-gray-600 hover:text-primary-600 font-medium transition-colors flex items-center">
-                <LayoutDashboard className="w-4 h-4 mr-1" />
-                Dashboard
+              <Link to="/profile" className="text-gray-600 hover:text-primary-600 font-medium transition-colors flex items-center">
+                <User className="w-4 h-4 mr-1" />
+                Hồ sơ
               </Link>
             )}
           </nav>
@@ -111,23 +124,36 @@ const Header = () => {
             >
               Trang chủ
             </Link>
-            <Link 
-              to="/courses" 
-              onClick={() => setIsMenuOpen(false)}
-              className="text-gray-600 hover:text-primary-600 font-medium py-2 border-b border-gray-50"
-            >
-              Khóa học
-            </Link>
             
-            {user ? (
+            {user?.role === 'student' ? (
+              <Link 
+                to="/courses" 
+                onClick={() => setIsMenuOpen(false)}
+                className="text-gray-600 hover:text-primary-600 font-medium py-2 border-b border-gray-50"
+              >
+                Khóa học
+              </Link>
+            ) : (
               <>
                 <Link 
-                  to="/dashboard" 
+                  to="/instructor/dashboard" 
                   onClick={() => setIsMenuOpen(false)}
                   className="text-gray-600 hover:text-primary-600 font-medium py-2 border-b border-gray-50"
                 >
-                  Dashboard học tập
+                  Dashboard
                 </Link>
+                <Link 
+                  to="/instructor/courses" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-gray-600 hover:text-primary-600 font-medium py-2 border-b border-gray-50"
+                >
+                  Khóa học của tôi
+                </Link>
+              </>
+            )}
+            
+            {user ? (
+              <>
                 <Link 
                   to="/profile" 
                   onClick={() => setIsMenuOpen(false)}

@@ -1,22 +1,35 @@
 const express = require('express');
-const { createCheckoutSession, createPayPalCheckout, executePayPalPayment, handleWebhook, getInvoiceUrl, downloadInvoice } = require('../controllers/paymentController');
-const { authMiddleware, isStudent } = require('../middleware/authMiddleware');
-const { validateWebhookSig } = require('../middleware/webhookMiddleware');
+const { 
+  generateVietQR, 
+  quickEnrollWithQR,
+  verifyQRPayment, 
+  handleVietQRWebhook,
+  getPaymentDetails,
+  getQRPaymentHistory,
+  getPaymentStats,
+  getSupportedBanks,
+  manualConfirmPayment,
+  getCoursePaymentInfo
+} = require('../controllers/qrPaymentController');
+const { authMiddleware, isStudent, isAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Stripe routes
-router.post('/checkout', authMiddleware, isStudent, createCheckoutSession);
+// ==================== QR PAYMENT ROUTES ====================
+// Public
+router.get('/course/:courseId/info', getCoursePaymentInfo);
+router.get('/qr/banks', getSupportedBanks);
+router.post('/qr/webhook', handleVietQRWebhook);
 
-// PayPal routes
-router.post('/paypal/checkout', authMiddleware, isStudent, createPayPalCheckout);
-router.post('/paypal/execute', authMiddleware, isStudent, executePayPalPayment);
+// Student
+router.post('/qr/generate', authMiddleware, isStudent, generateVietQR);
+router.post('/qr/quick-enroll', authMiddleware, isStudent, quickEnrollWithQR);
+router.post('/qr/verify', authMiddleware, verifyQRPayment);
+router.get('/qr/:paymentId', authMiddleware, getPaymentDetails);
+router.get('/qr/history', authMiddleware, getQRPaymentHistory);
 
-// Invoice routes
-router.get('/invoice/:paymentId', authMiddleware, getInvoiceUrl);
-router.get('/invoice/:paymentId/download', authMiddleware, downloadInvoice);
-
-// Webhook route (for Stripe)
-router.post('/webhook', validateWebhookSig, handleWebhook);
+// Admin
+router.get('/qr/stats', authMiddleware, isAdmin, getPaymentStats);
+router.post('/qr/manual-confirm', authMiddleware, isAdmin, manualConfirmPayment);
 
 module.exports = router;

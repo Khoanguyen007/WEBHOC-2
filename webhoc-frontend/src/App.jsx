@@ -10,14 +10,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Courses from './pages/Courses';
 import CourseDetail from './pages/CourseDetail';
-import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import LessonDetail from './pages/LessonDetail';
 import Quiz from './pages/Quiz';
 import Checkout from './pages/Checkout';
 import PaymentResult from './pages/PaymentResult';
 import VerifyEmail from './pages/VerifyEmail';
-import AdminDashboard from './pages/AdminDashboard';
+import InstructorDashboard from './pages/InstructorDashboard';
+import InstructorCourses from './pages/InstructorCourses';
+import InstructorCourseDetail from './pages/InstructorCourseDetail';
 
 function App() {
   return (
@@ -35,28 +36,10 @@ function App() {
 
             {/* Protected Routes */}
             <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
               path="/profile" 
               element={
                 <ProtectedRoute>
                   <Profile />
-                </ProtectedRoute>
-              } 
-            />
-
-            {/* Admin Routes */}
-            <Route 
-              path="/admin/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -79,7 +62,7 @@ function App() {
               } 
             />
             
-            {/* Lesson & Quiz Routes */}
+            {/* Lesson Routes */}
             <Route 
               path="/courses/:courseId/lessons/:lessonId" 
               element={
@@ -88,11 +71,39 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+
+            {/* Quiz Routes */}
             <Route 
-              path="/courses/:courseId/quiz" 
+              path="/courses/:courseId/quiz/:quizId" 
               element={
                 <ProtectedRoute>
                   <Quiz />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Instructor Routes */}
+            <Route 
+              path="/instructor/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <InstructorDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/instructor/courses" 
+              element={
+                <ProtectedRoute>
+                  <InstructorCourses />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/instructor/courses/:courseId" 
+              element={
+                <ProtectedRoute>
+                  <InstructorCourseDetail />
                 </ProtectedRoute>
               } 
             />

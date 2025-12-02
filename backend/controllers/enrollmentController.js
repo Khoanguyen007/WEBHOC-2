@@ -59,7 +59,42 @@ const getUserEnrollments = async (req, res, next) => {
   }
 };
 
+// @desc    Get enrollments by course (for instructor stats)
+// @route   GET /v2/enrollments/courses/:courseId
+// @access  Private (Instructor)
+const getEnrollmentsByCourse = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    // Check if user is the instructor of this course
+    const course = await Course.findOne({ 
+      _id: courseId, 
+      instructorId: req.user.id 
+    });
+
+    if (!course) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'You are not the instructor of this course'
+      });
+    }
+
+    const enrollments = await Enrollment.find({ 
+      courseId,
+      paymentStatus: 'paid'
+    }).populate('userId', 'displayName email').sort({ enrollmentDate: -1 });
+
+    res.json({
+      statusCode: 200,
+      data: enrollments
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   enrollInCourse,
-  getUserEnrollments
+  getUserEnrollments,
+  getEnrollmentsByCourse
 };

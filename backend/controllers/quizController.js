@@ -4,7 +4,7 @@ const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 
 // @desc    Create a new quiz
-// @route   POST /v2/quizzes/courses/:courseId
+// @route   POST /v2/quizzes/courses/:courseId or POST /v2/quizzes
 // @access  Private (Instructor)
 const createQuiz = async (req, res, next) => {
   try {
@@ -13,7 +13,7 @@ const createQuiz = async (req, res, next) => {
     console.log('🔍 Request params:', req.params);
     console.log('👤 User:', req.user);
 
-    const { courseId } = req.params;
+    const courseId = req.params.courseId || req.body.courseId;
 
     if (!req.body || Object.keys(req.body).length === 0) {
       console.log('❌ EMPTY REQUEST BODY');
@@ -58,6 +58,59 @@ const createQuiz = async (req, res, next) => {
 
   } catch (error) {
     console.error('💥 ERROR IN CREATE QUIZ:', error);
+    next(error);
+  }
+};
+
+// @desc    Update a quiz
+// @route   PATCH /v2/quizzes/:id
+// @access  Private (Instructor)
+const updateQuiz = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find the quiz and check ownership through course
+    const quiz = await Quiz.findById(id);
+    if (!quiz) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Quiz not found'
+      });
+    }
+
+    // Check if user owns the course that contains this quiz
+    const course = await Course.findOne({ 
+      _id: quiz.courseId, 
+      instructorId: req.user.id 
+    });
+    
+    if (!course) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'Forbidden: You do not own this quiz'
+      });
+    }
+
+    const updatedQuiz = await Quiz.findByIdAndUpdate(
+      id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      statusCode: 200,
+      message: 'Quiz updated successfully',
+      data: updatedQuiz
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Validation error',
+        details: messages
+      });
+    }
     next(error);
   }
 };
@@ -259,6 +312,7 @@ const getMyQuizAttempts = async (req, res, next) => {
 
 module.exports = {
   createQuiz,
+  updateQuiz,
   getQuizzesByCourse,
   getQuiz,
   submitQuizAttempt,

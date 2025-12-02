@@ -31,6 +31,18 @@ api.interceptors.response.use(
   }
 );
 
+export const paymentAPI = {
+  generateQRCode: (courseId) => api.post('/v2/payments/qr/generate', { courseId }),
+  quickEnrollQR: (courseId) => api.post('/v2/payments/qr/quick-enroll', { courseId }),
+  verifyQRPayment: (paymentId) => api.post('/v2/payments/qr/verify', { paymentId }),
+  getPaymentDetails: (paymentId) => api.get(`/v2/payments/qr/${paymentId}`),
+  getQRPaymentHistory: (params) => api.get('/v2/payments/qr/history', { params }),
+  getSupportedBanks: () => api.get('/v2/payments/qr/banks'),
+  getCoursePaymentInfo: (courseId) => api.get(`/v2/payments/course/${courseId}/info`),
+  manualConfirmPayment: (paymentId, note) => api.post('/v2/payments/qr/manual-confirm', { paymentId, note }),
+  getPaymentStats: () => api.get('/v2/payments/qr/stats'),
+};
+
 export const authAPI = {
   login: (credentials) => api.post('/v2/auth/login', credentials),
   signup: (userData) => api.post('/v2/auth/signup', userData),
@@ -46,19 +58,22 @@ export const userAPI = {
 export const courseAPI = {
   getCourses: (params) => api.get('/v2/courses', { params }),
   getCourse: (id) => api.get(`/v2/courses/${id}`),
+  getCourseDetail: (id) => api.get(`/v2/courses/${id}`),
   createCourse: (data) => api.post('/v2/courses', data),
   updateCourse: (id, data) => api.patch(`/v2/courses/${id}`, data),
 };
 
 export const lessonAPI = {
   getLessons: (courseId) => api.get(`/v2/lessons/courses/${courseId}/lessons`),
-  createLesson: (courseId, data) => api.post(`/v2/lessons/courses/${courseId}/lessons`, data),
+  getLessonsByCourse: (courseId) => api.get(`/v2/lessons/courses/${courseId}/lessons`),
+  createLesson: (data) => api.post(`/v2/lessons`, data),
   updateLesson: (id, data) => api.patch(`/v2/lessons/${id}`, data),
 };
 
 export const enrollmentAPI = {
   enroll: (courseId) => api.post(`/v2/enrollments/courses/${courseId}/enroll`),
   getMyEnrollments: () => api.get('/v2/enrollments/me/enrollments'),
+  getEnrollmentsByCourse: (courseId) => api.get(`/v2/enrollments/courses/${courseId}`),
 };
 
 export const progressAPI = {
@@ -68,19 +83,12 @@ export const progressAPI = {
 
 export const quizAPI = {
   getQuizzes: (courseId) => api.get(`/v2/quizzes/courses/${courseId}`),
+  getQuizzesByCourse: (courseId) => api.get(`/v2/quizzes/courses/${courseId}`),
   getQuiz: (id) => api.get(`/v2/quizzes/${id}`),
-  createQuiz: (courseId, data) => api.post(`/v2/quizzes/courses/${courseId}`, data),
+  createQuiz: (data) => api.post(`/v2/quizzes`, data),
+  updateQuiz: (id, data) => api.patch(`/v2/quizzes/${id}`, data),
   submitQuiz: (quizId, data) => api.post(`/v2/quizzes/${quizId}/attempt`, data),
   getMyAttempts: () => api.get('/v2/quizzes/me/attempts'),
-};
-
-export const paymentAPI = {
-  createCheckoutSession: (courseId) => api.post('/v2/payments/checkout', { courseId }),
-  getPaymentStatus: (sessionId) => api.get(`/v2/payments/status/${sessionId}`),
-  createPayPalCheckout: (courseId) => api.post('/v2/payments/paypal/checkout', { courseId }),
-  executePayPalPayment: (paymentId, payerId) => api.post('/v2/payments/paypal/execute', { paymentId, payerId }),
-  getInvoiceUrl: (paymentId) => api.get(`/v2/payments/invoice/${paymentId}`),
-  downloadInvoice: (paymentId) => `${API_BASE_URL}/v2/payments/invoice/${paymentId}/download`,
 };
 
 export const fileAPI = {

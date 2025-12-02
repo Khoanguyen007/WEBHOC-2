@@ -56,11 +56,19 @@ const CourseDetail = () => {
       
       if (response.data.paymentStatus === 'paid') {
         alert('Đăng ký thành công! Bắt đầu học ngay.');
-        navigate('/dashboard');
+        if (lessons.length > 0) {
+          navigate(`/courses/${id}/lessons/${lessons[0]._id}`);
+        } else {
+          navigate(`/courses/${id}`);
+        }
       } else if (course.priceCents === 0) {
         // Free course
         alert('Đăng ký thành công! Bắt đầu học ngay.');
-        navigate('/dashboard');
+        if (lessons.length > 0) {
+          navigate(`/courses/${id}/lessons/${lessons[0]._id}`);
+        } else {
+          navigate(`/courses/${id}`);
+        }
       } else {
         // Redirect to checkout page
         navigate(`/checkout/${id}`);
@@ -94,6 +102,24 @@ const CourseDetail = () => {
 
   const isEnrolled = progress !== null;
   const isInstructor = user && user.role === 'instructor';
+
+  // Find the current lesson being studied (first incomplete lesson or first lesson)
+  const getCurrentLesson = () => {
+    if (!progress || !progress.lessons || lessons.length === 0) {
+      return lessons[0];
+    }
+    
+    // Find first incomplete lesson
+    const incompleteLesson = progress.lessons.find(l => !l.completed);
+    if (incompleteLesson) {
+      return lessons.find(lesson => lesson._id === incompleteLesson.lessonId) || lessons[0];
+    }
+    
+    // All completed, return first lesson
+    return lessons[0];
+  };
+
+  const currentLesson = isEnrolled ? getCurrentLesson() : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -152,7 +178,13 @@ const CourseDetail = () => {
 
               {isEnrolled ? (
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => {
+                    if (currentLesson) {
+                      navigate(`/courses/${id}/lessons/${currentLesson._id}`);
+                    } else {
+                      navigate('/profile');
+                    }
+                  }}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 mb-4"
                 >
                   Tiếp tục học
@@ -193,30 +225,45 @@ const CourseDetail = () => {
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <h2 className="text-2xl font-bold mb-4">Nội dung khóa học</h2>
               <div className="space-y-3">
-                {lessons.map((lesson, index) => (
-                  <div key={lesson._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center">
-                        {index + 1}
+                {lessons.map((lesson, index) => {
+                  const lessonProgress = progress?.lessons?.find(l => l.lessonId === lesson._id);
+                  const isCurrentLesson = currentLesson?._id === lesson._id;
+                  
+                  return (
+                    <div key={lesson._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{lesson.title}</h3>
+                          <p className="text-sm text-gray-600">
+                            {Math.floor(lesson.duration / 60)} phút
+                            {lessonProgress?.completed && (
+                              <span className="ml-2 text-green-600">✓ Hoàn thành</span>
+                            )}
+                            {isCurrentLesson && !lessonProgress?.completed && (
+                              <span className="ml-2 text-blue-600">→ Đang học</span>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold">{lesson.title}</h3>
-                        <p className="text-sm text-gray-600">
-                          {Math.floor(lesson.duration / 60)} phút
-                        </p>
-                      </div>
+                      {isEnrolled && (
+                        <button
+                          onClick={() => navigate(`/courses/${id}/lessons/${lesson._id}`)}
+                          className={`flex items-center space-x-2 px-3 py-1 rounded transition-colors ${
+                            isCurrentLesson
+                              ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                              : 'text-primary-600 hover:text-primary-700'
+                          }`}
+                        >
+                          <Play className="h-4 w-4" />
+                          <span>{isCurrentLesson ? 'Tiếp tục' : 'Học'}</span>
+                        </button>
+                      )}
                     </div>
-                    {isEnrolled && (
-                      <button
-                        onClick={() => navigate(`/lesson/${lesson._id}`)}
-                        className="flex items-center space-x-2 text-primary-600 hover:text-primary-700"
-                      >
-                        <Play className="h-4 w-4" />
-                        <span>Học</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
